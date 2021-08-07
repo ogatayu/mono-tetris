@@ -14,96 +14,17 @@ namespace Tetris
         private int[,] _field = new int[FIELD_WIDTH, FIELD_HEIGHT + 1];
         private int[,] _field_fixed = new int[FIELD_WIDTH, FIELD_HEIGHT + 1];
 
-        private const int TETRIMINO_WIDTH = 5;
-        private const int TETRIMINO_HEIGHT = 5;
-        private int[,] _block = new int[TETRIMINO_WIDTH, TETRIMINO_HEIGHT]; // 今操作しているブロック
-
-        public enum Tetrimino { I, O, S, Z, J, L, T, Num, None }
-
-
-        private Tetrimino _block_now = Tetrimino.None;
-        private int _block_x = 0;
-        private int _block_y = 0;
+        private Block _block_now;  // 操作中のブロック
         private int _fall_speed = 2;
         private int _fall_count = 0;
 
-
-        // 配列の初期化時はX, Y軸が逆になるので注意
-        private int[][,] TETRIMINO_BLOCK = new int[(int)Tetrimino.Num][,]
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        public GameEngine()
         {
-            // I
-            new int[,]
-            {
-                { 0, 0, 1, 0, 0 },
-                { 0, 0, 1, 0, 0 },
-                { 0, 0, 1, 0, 0 },
-                { 0, 0, 1, 0, 0 },
-                { 0, 0, 0, 0, 0 }
-            },
-
-            // O
-            new int[,]
-            {
-                { 0, 0, 1, 1, 0 },
-                { 0, 0, 1, 1, 0 },
-                { 0, 0, 0, 0, 0 },
-                { 0, 0, 0, 0, 0 },
-                { 0, 0, 0, 0, 0 }
-            },
-
-            // S
-            new int[,]
-            {
-                { 0, 0, 0, 0, 0 },
-                { 0, 0, 1, 0, 0 },
-                { 0, 0, 1, 1, 0 },
-                { 0, 0, 0, 1, 0 },
-                { 0, 0, 0, 0, 0 }
-            },
-
-            // Z
-            new int[,]
-            {
-                { 0, 0, 0, 0, 0 },
-                { 0, 0, 0, 1, 0 },
-                { 0, 0, 1, 1, 0 },
-                { 0, 0, 1, 0, 0 },
-                { 0, 0, 0, 0, 0 }
-            },
-
-            // J
-            new int[,]
-            {
-                { 0, 0, 0, 0, 0 },
-                { 0, 0, 1, 1, 0 },
-                { 0, 0, 1, 0, 0 },
-                { 0, 0, 1, 0, 0 },
-                { 0, 0, 0, 0, 0 }
-            },
-
-            // L
-            new int[,]
-            {
-                { 0, 0, 0, 0, 0 },
-                { 0, 0, 1, 0, 0 },
-                { 0, 0, 1, 0, 0 },
-                { 0, 0, 1, 1, 0 },
-                { 0, 0, 0, 0, 0 }
-            },
-
-            // T
-            new int[,]
-            {
-                { 0, 0, 0, 0, 0 },
-                { 0, 0, 1, 0, 0 },
-                { 0, 0, 1, 1, 0 },
-                { 0, 0, 1, 0, 0 },
-                { 0, 0, 0, 0, 0 }
-            },
-        };
-
-        public GameEngine() { }
-
+            _block_now = new Block( Block.TetriminoType.None );
+         }
 
         /// <summary>
         /// フィールドのクリア処理
@@ -158,14 +79,14 @@ namespace Tetris
         /// </summary>
         private bool BlockCollision()
         {
-            for (int i = 0; i < TETRIMINO_WIDTH; i++)
+            for (int i = 0; i < _block_now.Size; i++)
             {
-                for (int j = 0; j < TETRIMINO_HEIGHT; j++)
+                for (int j = 0; j < _block_now.Size; j++)
                 {
-                    if (_block[i, j] != 0)
+                    if (_block_now.IsBlockExist(i,j))
                     {
-                        int x = _block_x + i;
-                        int y = _block_y + j;
+                        int x = _block_now.X + i;
+                        int y = _block_now.Y + j;
 
                         if(y < 0)
                         {
@@ -175,12 +96,12 @@ namespace Tetris
                         // 左右の壁
                         if (x < 0)
                         {
-                            _block_x++;
+                            _block_now.Move(1, 0);
                             return true;
                         }
                         else if (x >= _field.GetLength(0))
                         {
-                            _block_x--;
+                            _block_now.Move(-1, 0);
                             return true;
                         }
 
@@ -205,13 +126,13 @@ namespace Tetris
                             if (j < 3)
                             {
                                 // ブロックの下半分が衝突
-                                _block_y++;
+                                _block_now.Move(0, 1);
                                 return true;
                             }
                             else if (j > 3)
                             {
                                 // 上半分
-                                _block_y--;
+                                _block_now.Move(0, -1);
                                 return true;
                             }
 #endif
@@ -229,14 +150,14 @@ namespace Tetris
         /// <returns></returns>
         private bool IsCollisionBlockAndFloor()
         {
-            for (int i = 0; i < TETRIMINO_WIDTH; i++)
+            for (int i = 0; i < _block_now.Size; i++)
             {
-                for (int j = 0; j < TETRIMINO_HEIGHT; j++)
+                for (int j = 0; j < _block_now.Size; j++)
                 {
-                    if (_block[i, j] != 0)
+                    if (_block_now.IsBlockExist(i, j))
                     {
-                        int x = _block_x + i;
-                        int y = _block_y + j;
+                        int x = _block_now.X + i;
+                        int y = _block_now.Y + j;
 
                         if (y < 0)
                         {
@@ -290,97 +211,52 @@ namespace Tetris
         }
 
         /// <summary>
-        /// 引数の2次元配列 g を時計回りに回転させたものを返す
-        /// </summary>
-        /// <param name="g"></param>
-        /// <returns></returns>
-        private int[,] RotateClockwise(int[,] g)
-        {
-            int rows = g.GetLength(0);
-            int cols = g.GetLength(1);
-            var t = new int[cols, rows];
-            for (int i = 0; i < rows; i++)
-            {
-                for (int j = 0; j < cols; j++)
-                {
-                    t[j, rows - i - 1] = g[i, j];
-                }
-            }
-            return t;
-        }
-
-        /// <summary>
-        /// 引数の2次元配列 g を反時計回りに回転させたものを返す
-        /// </summary>
-        /// <param name="g"></param>
-        /// <returns></returns>
-        private int[,] RotateAnticlockwise(int[,] g)
-        {
-            int rows = g.GetLength(0);
-            int cols = g.GetLength(1);
-            var t = new int[cols, rows];
-            for (int i = 0; i < rows; i++)
-            {
-                for (int j = 0; j < cols; j++)
-                {
-                    t[cols - j - 1, i] = g[i, j];
-                }
-            }
-            return t;
-        }
-
-        /// <summary>
         /// ブロックの回転処理
         /// </summary>
         /// <param name="direction">0 = 左回転, 1 = 右回転</param>
         private void BlockRotate(int direction)
         {
-            if (_block_now == Tetrimino.O)
+            if (_block_now.Type == Block.TetriminoType.O)
             {
                 return;
             }
 
             // とっておく
-            int[,] org_block = new int[TETRIMINO_WIDTH, TETRIMINO_HEIGHT];
-            Array.Copy(_block, org_block, _block.Length);
+            Block org_block = _block_now.Duplicate();
 
             // まわす
             if (direction == 0)
             {
                 // 左回転
-                _block = RotateAnticlockwise(_block);
+                _block_now.RotateAnticlockwise();
 
             }
             else if(direction == 1)
             {
                 // 右回転
-                _block = RotateClockwise(_block);
+                _block_now.RotateClockwise();
             }
-
-            // とっておく
-            int[,] temp_block = new int[TETRIMINO_WIDTH, TETRIMINO_HEIGHT];
-            Array.Copy(_block, temp_block, _block.Length);
 
             // 回転していいか判定
             if (BlockCollision())
             {
-                if (_block_now == Tetrimino.I)
+                if (_block_now.Type == Block.TetriminoType.I)
                 {
-                    // I は衝突していたら無条件に回転不可能
-                    Array.Copy(org_block, _block, org_block.Length);
+                    // TODO: I は衝突していたら無条件に回転不可能なので、もとに戻す
+                    _block_now = org_block;
                 }
                 else
                 {
                     // 右に移動して再判定
-                    _block_x++;
+                    _block_now.Move(1, 0);
                     if (BlockCollision())
                     {
                         // だめだったら左に移動して再判定
-                        _block_x -= 2;
+                        _block_now.Move(2, 0);
                         if (BlockCollision())
                         {
                             // 駄目だったら回転不可能
-                            Array.Copy(org_block, _block, org_block.Length);
+                            _block_now = org_block;
                         }
                     }
                 }
@@ -434,12 +310,12 @@ namespace Tetris
                 if(_key_down_count_Left == 0)
                 {
                     // 左へ移動
-                    _block_x--;
+                    _block_now.Move(-1, 0);
 
                     // 衝突してたら戻す
                     if(BlockCollision())
                     {
-                        _block_x++;
+                    _block_now.Move(1, 0);
                     }
                 }
 
@@ -455,12 +331,12 @@ namespace Tetris
                 if(_key_down_count_Right == 0)
                 {
                     // 右へ移動
-                    _block_x++;
+                    _block_now.Move(1, 0);
 
                     // 衝突してたら戻す
                     if (BlockCollision())
                     {
-                        _block_x--;
+                        _block_now.Move(-1, 0);
                     }
                 }
 
@@ -478,7 +354,7 @@ namespace Tetris
                     while (!BlockCollision())
                     {
                         // 衝突するまで下に下ろす
-                        _block_y++;
+                        _block_now.Move(0, 1);
                     }
                     _fall_count = 0;
                 }
@@ -494,7 +370,7 @@ namespace Tetris
             {
                 if(_key_down_count_Down == 0)
                 {
-                    _block_y++;
+                    _block_now.Move(0, 1);
                 }
 
                 _key_down_count_Down++;
@@ -512,16 +388,13 @@ namespace Tetris
         public void Update(GameTime gameTime)
         {
             // ブロック生成
-            if(_block_now == Tetrimino.None)
+            if(_block_now.Type == Block.TetriminoType.None)
             {
-                _block_x = (FIELD_WIDTH/2) -2;
-                _block_y = -1;
+                uint t = Rand.NextRandInt(ref rnd) % Block.TETRIMINO_TYPE_NUM;
+                // t = 0;
 
-                uint t = Rand.NextRandInt(ref rnd) % (int)Tetrimino.Num;
-                t = 0;
-                Array.Copy(TETRIMINO_BLOCK[t], _block, TETRIMINO_BLOCK[t].Length);
-
-                _block_now = (Tetrimino)t;
+                _block_now = new Block((Block.TetriminoType)t);
+                _block_now.SetPosition((FIELD_WIDTH/2) - (_block_now.Size/2), -1);
             }
 
             // ブロック操作
@@ -531,29 +404,29 @@ namespace Tetris
             _fall_count += _fall_speed;
             if(_fall_count >= 60)
             {
-                _block_y++;
+                _block_now.Move(0, 1);
                 _fall_count = 0;
             }
 
             if(IsCollisionBlockAndFloor())
             {
                 // 他ブロックまたは床と衝突してたら位置を戻してブロック確定処理
-                _block_y--;
-                _block_now = Tetrimino.None;
+                _block_now.Move(0, -1);
+                _block_now.Destroy();
 
-                for (int i = 0; i < TETRIMINO_WIDTH; i++)
+                for (int i = 0; i < _block_now.Size; i++)
                 {
-                    for (int j = 0; j < TETRIMINO_HEIGHT; j++)
+                    for (int j = 0; j < _block_now.Size; j++)
                     {
-                        if (_block[i, j] != 0)
+                        if (_block_now.IsBlockExist(i, j))
                         {
-                            int x = _block_x + i;
-                            int y = _block_y + j;
+                            int x = _block_now.X + i;
+                            int y = _block_now.Y + j;
 
                             if (x >= 0 && x < _field_fixed.GetLength(0) &&
                                 y >= 0 && y < _field_fixed.GetLength(1))
                             {
-                                _field_fixed[x, y] = _block[i, j];
+                                _field_fixed[x, y] = 1;
                             }
                         }
                     }
@@ -593,19 +466,19 @@ namespace Tetris
             Array.Copy(_field_fixed, _field, _field_fixed.Length);
 
             // 描画用にブロックをフィールドにコピー
-            for (int i = 0; i < TETRIMINO_WIDTH; i++)
+            for (int i = 0; i < _block_now.Size; i++)
             {
-                for (int j = 0; j < TETRIMINO_HEIGHT; j++)
+                for (int j = 0; j < _block_now.Size; j++)
                 {
-                    if (_block[i,j] != 0)
+                    if (_block_now.IsBlockExist(i,j))
                     {
-                        int x = _block_x + i;
-                        int y = _block_y + j;
+                        int x = _block_now.X + i;
+                        int y = _block_now.Y + j;
 
                         if (x >= 0 && x < _field.GetLength(0) &&
                             y >= 0 && y < _field.GetLength(1))
                         {
-                            _field[x, y] = _block[i, j];
+                            _field[x, y] = 1;
                         }
                     }
                 }
