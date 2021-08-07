@@ -9,12 +9,10 @@ namespace Tetris
     {
         private uint rnd;
 
-        private const int FIELD_WIDTH = 12;
-        private const int FIELD_HEIGHT = 21;
-        private int[,] _field = new int[FIELD_WIDTH, FIELD_HEIGHT + 1];
-        private int[,] _field_fixed = new int[FIELD_WIDTH, FIELD_HEIGHT + 1];
+        private Field _field_draw = new Field();
+        private Field _field_fixed = new Field();
 
-        private Block _block_now;  // 操作中のブロック
+        private Tetrimino _tetrimino_now;  // 操作中のブロック
         private int _fall_speed = 2;
         private int _fall_count = 0;
 
@@ -23,38 +21,8 @@ namespace Tetris
         /// </summary>
         public GameEngine()
         {
-            _block_now = new Block( Block.TetriminoType.None );
+            _tetrimino_now = new Tetrimino( Tetrimino.TetriminoType.None );
          }
-
-        /// <summary>
-        /// フィールドのクリア処理
-        /// </summary>
-        /// <param name="fill">true: 内側もすべて削除</param>
-        private void FieldClear(bool fill)
-        {
-            if (fill)
-            {
-                Array.Clear(_field_fixed, 0, _field_fixed.Length);
-            }
-
-            for (int i = 0; i < FIELD_WIDTH; i++)
-            {
-                for (int j = 0; j < FIELD_HEIGHT; j++)
-                {
-                    // 左右の壁
-                    if (i == 0 || i == FIELD_WIDTH - 1)
-                    {
-                        _field_fixed[i, j] = 255;
-                    }
-
-                    // 一番下
-                    if (j == FIELD_HEIGHT - 1)
-                    {
-                        _field_fixed[i, j] = 255;
-                    }
-                }
-            }
-        }
 
         /// <summary>
         /// Initialize
@@ -71,7 +39,7 @@ namespace Tetris
                 rnd = (uint)DateTime.Now.Ticks;
             }
 
-            FieldClear(true);
+            _field_fixed.Clear(true);
         }
 
         /// <summary>
@@ -79,14 +47,14 @@ namespace Tetris
         /// </summary>
         private bool BlockCollision()
         {
-            for (int i = 0; i < _block_now.Size; i++)
+            for (int i = 0; i < _tetrimino_now.Size; i++)
             {
-                for (int j = 0; j < _block_now.Size; j++)
+                for (int j = 0; j < _tetrimino_now.Size; j++)
                 {
-                    if (_block_now.IsBlockExist(i,j))
+                    if (_tetrimino_now.IsBlockExist(i,j))
                     {
-                        int x = _block_now.X + i;
-                        int y = _block_now.Y + j;
+                        int x = _tetrimino_now.X + i;
+                        int y = _tetrimino_now.Y + j;
 
                         if(y < 0)
                         {
@@ -96,46 +64,19 @@ namespace Tetris
                         // 左右の壁
                         if (x < 0)
                         {
-                            _block_now.Move(1, 0);
+                            _tetrimino_now.Move(1, 0);
                             return true;
                         }
-                        else if (x >= _field.GetLength(0))
+                        else if (x >= Field.Width)
                         {
-                            _block_now.Move(-1, 0);
+                            _tetrimino_now.Move(-1, 0);
                             return true;
                         }
 
-                        // 他のブロックとの衝突
-                        if (_field_fixed[x, y] != 0)
+                        // 他のブロックと衝突
+                        if (_field_fixed.IsFilled(x,y))
                         {
                             return true;
-#if false
-                            if (i < 3)
-                            {
-                                // ブロックの左半分が衝突
-                                _block_x++;
-                                return true;
-                            }
-                            else if (i > 3)
-                            {
-                                // 右半分
-                                _block_x--;
-                                return true;
-                            }
-
-                            if (j < 3)
-                            {
-                                // ブロックの下半分が衝突
-                                _block_now.Move(0, 1);
-                                return true;
-                            }
-                            else if (j > 3)
-                            {
-                                // 上半分
-                                _block_now.Move(0, -1);
-                                return true;
-                            }
-#endif
                         }
                     }
                 }
@@ -150,25 +91,25 @@ namespace Tetris
         /// <returns></returns>
         private bool IsCollisionBlockAndFloor()
         {
-            for (int i = 0; i < _block_now.Size; i++)
+            for (int i = 0; i < _tetrimino_now.Size; i++)
             {
-                for (int j = 0; j < _block_now.Size; j++)
+                for (int j = 0; j < _tetrimino_now.Size; j++)
                 {
-                    if (_block_now.IsBlockExist(i, j))
+                    if (_tetrimino_now.IsBlockExist(i, j))
                     {
-                        int x = _block_now.X + i;
-                        int y = _block_now.Y + j;
+                        int x = _tetrimino_now.X + i;
+                        int y = _tetrimino_now.Y + j;
 
                         if (y < 0)
                         {
                             continue;
                         }
-                        else if(y >= FIELD_HEIGHT)
+                        else if(y >= Field.Height)
                         {
                             return true;
                         }
 
-                        if (_field_fixed[x, y] != 0)
+                        if (_field_fixed.IsFilled(x, y))
                         {
                             return true;
                         }
@@ -185,10 +126,10 @@ namespace Tetris
         /// <param name="line"></param>
         private void LineRemove(int line)
         {
-            int[,] temp = new int[FIELD_WIDTH, FIELD_HEIGHT + 1];
-            Array.Clear(temp, 0, temp.Length);
+            Field temp = new Field();
+            temp.Clear(false);
 
-            int y = _field_fixed.GetLength(1) - 1;
+            int y = Field.Height;  // 下から処理する
             int copy_line = y;
             while(y >= 0 && copy_line >= 0)
             {
@@ -198,16 +139,17 @@ namespace Tetris
                     continue;
                 }
 
-                for (int x = 0; x < _field_fixed.GetLength(0); x++)
+                for (int x = 0; x < Field.Width; x++)
                 {
-                    temp[x, copy_line] = _field_fixed[x, y];
+                    temp.SetBlock(x, copy_line, _field_fixed.GetBlock(x, y));
                 }
                 y--;
                 copy_line--;
             }
 
-            Array.Copy(temp, _field_fixed, temp.Length);
-            FieldClear(false); // 壁の再定義
+            _field_fixed = temp;
+
+            _field_fixed.Clear(false);
         }
 
         /// <summary>
@@ -216,47 +158,47 @@ namespace Tetris
         /// <param name="direction">0 = 左回転, 1 = 右回転</param>
         private void BlockRotate(int direction)
         {
-            if (_block_now.Type == Block.TetriminoType.O)
+            if (_tetrimino_now.Type == Tetrimino.TetriminoType.O)
             {
                 return;
             }
 
             // とっておく
-            Block org_block = _block_now.Duplicate();
+            Tetrimino org_block = _tetrimino_now.Duplicate();
 
             // まわす
             if (direction == 0)
             {
                 // 左回転
-                _block_now.RotateAnticlockwise();
+                _tetrimino_now.RotateAnticlockwise();
 
             }
             else if(direction == 1)
             {
                 // 右回転
-                _block_now.RotateClockwise();
+                _tetrimino_now.RotateClockwise();
             }
 
             // 回転していいか判定
             if (BlockCollision())
             {
-                if (_block_now.Type == Block.TetriminoType.I)
+                if (_tetrimino_now.Type == Tetrimino.TetriminoType.I)
                 {
                     // TODO: I は衝突していたら無条件に回転不可能なので、もとに戻す
-                    _block_now = org_block;
+                    _tetrimino_now = org_block;
                 }
                 else
                 {
                     // 右に移動して再判定
-                    _block_now.Move(1, 0);
+                    _tetrimino_now.Move(1, 0);
                     if (BlockCollision())
                     {
                         // だめだったら左に移動して再判定
-                        _block_now.Move(2, 0);
+                        _tetrimino_now.Move(2, 0);
                         if (BlockCollision())
                         {
                             // 駄目だったら回転不可能
-                            _block_now = org_block;
+                            _tetrimino_now = org_block;
                         }
                     }
                 }
@@ -310,12 +252,12 @@ namespace Tetris
                 if(_key_down_count_Left == 0)
                 {
                     // 左へ移動
-                    _block_now.Move(-1, 0);
+                    _tetrimino_now.Move(-1, 0);
 
                     // 衝突してたら戻す
                     if(BlockCollision())
                     {
-                    _block_now.Move(1, 0);
+                    _tetrimino_now.Move(1, 0);
                     }
                 }
 
@@ -331,12 +273,12 @@ namespace Tetris
                 if(_key_down_count_Right == 0)
                 {
                     // 右へ移動
-                    _block_now.Move(1, 0);
+                    _tetrimino_now.Move(1, 0);
 
                     // 衝突してたら戻す
                     if (BlockCollision())
                     {
-                        _block_now.Move(-1, 0);
+                        _tetrimino_now.Move(-1, 0);
                     }
                 }
 
@@ -354,7 +296,7 @@ namespace Tetris
                     while (!BlockCollision())
                     {
                         // 衝突するまで下に下ろす
-                        _block_now.Move(0, 1);
+                        _tetrimino_now.Move(0, 1);
                     }
                     _fall_count = 0;
                 }
@@ -370,7 +312,7 @@ namespace Tetris
             {
                 if(_key_down_count_Down == 0)
                 {
-                    _block_now.Move(0, 1);
+                    _tetrimino_now.Move(0, 1);
                 }
 
                 _key_down_count_Down++;
@@ -388,13 +330,13 @@ namespace Tetris
         public void Update(GameTime gameTime)
         {
             // ブロック生成
-            if(_block_now.Type == Block.TetriminoType.None)
+            if(_tetrimino_now.Type == Tetrimino.TetriminoType.None)
             {
-                uint t = Rand.NextRandInt(ref rnd) % Block.TETRIMINO_TYPE_NUM;
-                // t = 0;
+                uint t = Rand.NextRandInt(ref rnd) % Tetrimino.TETRIMINO_TYPE_NUM;
+                //t = 0;
 
-                _block_now = new Block((Block.TetriminoType)t);
-                _block_now.SetPosition((FIELD_WIDTH/2) - (_block_now.Size/2), -1);
+                _tetrimino_now = new Tetrimino((Tetrimino.TetriminoType)t);
+                _tetrimino_now.SetPosition((Field.Width/2) - (_tetrimino_now.Size/2), 0);
             }
 
             // ブロック操作
@@ -404,81 +346,82 @@ namespace Tetris
             _fall_count += _fall_speed;
             if(_fall_count >= 60)
             {
-                _block_now.Move(0, 1);
+                _tetrimino_now.Move(0, 1);
                 _fall_count = 0;
             }
 
             if(IsCollisionBlockAndFloor())
             {
                 // 他ブロックまたは床と衝突してたら位置を戻してブロック確定処理
-                _block_now.Move(0, -1);
-                _block_now.Destroy();
+                _tetrimino_now.Move(0, -1);
+                _tetrimino_now.Destroy();
 
-                for (int i = 0; i < _block_now.Size; i++)
+                for (int i = 0; i < _tetrimino_now.Size; i++)
                 {
-                    for (int j = 0; j < _block_now.Size; j++)
+                    for (int j = 0; j < _tetrimino_now.Size; j++)
                     {
-                        if (_block_now.IsBlockExist(i, j))
+                        if (_tetrimino_now.IsBlockExist(i, j))
                         {
-                            int x = _block_now.X + i;
-                            int y = _block_now.Y + j;
+                            int x = _tetrimino_now.X + i;
+                            int y = _tetrimino_now.Y + j;
 
-                            if (x >= 0 && x < _field_fixed.GetLength(0) &&
-                                y >= 0 && y < _field_fixed.GetLength(1))
+                            if (x >= 0 && x < Field.Width &&
+                                y >= 0 && y < Field.Height)
                             {
-                                _field_fixed[x, y] = 1;
+                                _field_fixed.UpdateBlock(x, y, true, _tetrimino_now.GetColor());
                             }
                         }
                     }
                 }
 
                 // 列が揃ってたら消す
-                for (int y = 0; y < FIELD_HEIGHT; y++)
+                for (int y = 0; y < Field.Height - 1; y++)
                 {
                     int line_count = 0;
 
                     // 両脇の1マスを省いた判定
-                    for (int x = 1; x < FIELD_WIDTH - 1; x++)
+                    for (int x = 1; x < Field.Width - 1; x++)
                     {
-                        if (_field_fixed[x, y] == 1)
+                        if (_field_fixed.IsFilled(x, y))
                         {
                             line_count++;
                         }
                     }
-                    if(line_count >= FIELD_WIDTH - 2 )
+                    if(line_count >= Field.Width - 2 )
                     {
                         LineRemove(y);
                     }
                 }
 
                 // 最上部列にブロックがあればゲームオーバー
-                for (int x = 1; x < FIELD_WIDTH - 1; x++)
+                for (int x = 1; x < Field.Width - 1; x++)
                 {
-                    if (_field_fixed[x, 0] == 1)
+                        if (_field_fixed.IsFilled(x, 0))
                     {
                         // TODO: とりあえず全クリア
-                        FieldClear(true);
+                        _field_fixed.Clear(true);
                     }
                 }
             }
 
-            // 確定したフィールドを作業用にコピー
-            Array.Copy(_field_fixed, _field, _field_fixed.Length);
+            // 確定したフィールドを描画用にコピー
+            _field_draw = (Field)_field_fixed.Duplicate();
+            //Array.Copy(_field_fixed, _field_draw, _field_fixed.Length);
 
             // 描画用にブロックをフィールドにコピー
-            for (int i = 0; i < _block_now.Size; i++)
+            for (int i = 0; i < _tetrimino_now.Size; i++)
             {
-                for (int j = 0; j < _block_now.Size; j++)
+                for (int j = 0; j < _tetrimino_now.Size; j++)
                 {
-                    if (_block_now.IsBlockExist(i,j))
+                    if (_tetrimino_now.IsBlockExist(i,j))
                     {
-                        int x = _block_now.X + i;
-                        int y = _block_now.Y + j;
+                        int x = _tetrimino_now.X + i;
+                        int y = _tetrimino_now.Y + j;
 
-                        if (x >= 0 && x < _field.GetLength(0) &&
-                            y >= 0 && y < _field.GetLength(1))
+                        if (x >= 0 && x < Field.Width &&
+                            y >= 0 && y < Field.Height)
                         {
-                            _field[x, y] = 1;
+                            _field_draw.UpdateBlock(x, y, true, _tetrimino_now.GetColor());
                         }
                     }
                 }
@@ -497,49 +440,29 @@ namespace Tetris
         /// <param name="spriteBatch"></param>
         public void Draw(GameTime gameTime, SpriteBatch spriteBatch)
         {
-#if false
-            Color background_color = new Color(0xFF, 0xFF, 0xFF);
             spriteBatch.DrawRectangle(
                 BLOCK_X_BASE,
-                BLOCK_Y_BASE,
-                BLOCK_SIZE * FIELD_WIDTH, BLOCK_SIZE * (FIELD_HEIGHT - 1),
-                background_color, background_color
+                BLOCK_Y_BASE + BLOCK_SIZE,
+                BLOCK_SIZE * Field.Width, BLOCK_SIZE * (Field.Height - 1),
+                Color.Black,
+                Color.Transparent
                 );
-#endif
 
-            Color border_color;
-            Color fill_color;
-            for (int i = 0; i < FIELD_WIDTH; i++)
+            for (int i = 0; i < Field.Width; i++)
             {
                 // 一番上の行は不可視とするので j は 1 始まり
-                for (int j = 1; j < FIELD_HEIGHT; j++)
+                for (int j = 1; j < Field.Height; j++)
                 {
-                    switch (_field[i, j])
+                    if( _field_draw.IsFilled(i, j) )
                     {
-                        case 0:
-                            border_color = new Color(0xCC, 0xCC, 0xCC);
-                            fill_color = new Color(0xFF, 0xFF, 0xFF);
-                            break;
-                        case 1:
-                            border_color = new Color(0xFF, 0x88, 0x00);
-                            fill_color = new Color(0xFF, 0xCC, 0x00);
-                            break;
-                        case 255:
-                            border_color = new Color(0x88, 0x88, 0x88);
-                            fill_color = new Color(0x88, 0x88, 0x88);
-                            break;
-                        default:
-                            border_color = new Color(0x00, 0x00, 0x00);
-                            fill_color = new Color(0x00, 0x00, 0x00);
-                            break;
+                        spriteBatch.DrawRectangle(
+                            BLOCK_X_BASE + (i * BLOCK_SIZE),
+                            BLOCK_Y_BASE + (j * BLOCK_SIZE),
+                            BLOCK_SIZE, BLOCK_SIZE,
+                            _field_draw.GetBlockColor(i, j),
+                            Color.Transparent
+                            );
                     }
-
-                    spriteBatch.DrawRectangle(
-                        BLOCK_X_BASE + (i * BLOCK_SIZE),
-                        BLOCK_Y_BASE + (j * BLOCK_SIZE),
-                        BLOCK_SIZE, BLOCK_SIZE,
-                        fill_color, border_color
-                        );
                 }
             }
         }

@@ -30,23 +30,32 @@ namespace Tetris
                 SpriteEffects.None, 0f);
         }
 
-        /// color1 = fill color, color2 = outline color
+        /// <summary>
+        /// Draw Recangle
+        /// </summary>
+        /// <param name="spriteBatch">spriteBatch</param>
+        /// <param name="x">X</param>
+        /// <param name="y">Y</param>
+        /// <param name="width">width</param>
+        /// <param name="height">height</param>
+        /// <param name="fillcolor">fill color</param>
+        /// <param name="outlinecolor">outline color</param>
         public static void DrawRectangle(
             this SpriteBatch spriteBatch,
             int x, int y,
             int width, int height,
-            Color color1, Color color2
+            Color fillcolor, Color outlinecolor
             )
         {
             // fill
             Rectangle rect = new Rectangle(x, y, width, height);
-            spriteBatch.Draw(Screen.Pixel, rect, null, color1);
+            spriteBatch.Draw(Screen.Pixel, rect, null, fillcolor);
 
             // outline
-            spriteBatch.DrawLine(x, y, x + width, y, color2);
-            spriteBatch.DrawLine(x, y, x, y + height, color2);
-            spriteBatch.DrawLine(x + width, y, x + width, y + height, color2);
-            spriteBatch.DrawLine(x, y + height, x + width, y + height, color2);
+            spriteBatch.DrawLine(x, y, x + width, y, outlinecolor);
+            spriteBatch.DrawLine(x, y, x, y + height, outlinecolor);
+            spriteBatch.DrawLine(x + width, y, x + width, y + height, outlinecolor);
+            spriteBatch.DrawLine(x, y + height, x + width, y + height, outlinecolor);
         }
 	}
 }
