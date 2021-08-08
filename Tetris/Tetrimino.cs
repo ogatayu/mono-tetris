@@ -5,7 +5,7 @@ namespace Tetris
 {
     public class Tetrimino
     {
-        public const int TETRIMINO_TYPE_NUM = (int)TetriminoType.Num;
+        public const int TypeNum = (int)TetriminoType.Num;
 
         // public property
         public int X { get; private set; }

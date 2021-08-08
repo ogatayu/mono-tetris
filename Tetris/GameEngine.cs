@@ -7,10 +7,11 @@ namespace Tetris
 {
     public class GameEngine
     {
-        private uint rnd;
 
         private Field _field_draw = new Field();
         private Field _field_fixed = new Field();
+
+        private NextManager _next;
 
         private Tetrimino _tetrimino;  // 操作中のテトリミノ
         private Tetrimino _ghost;      // 落下位置表示のためのゴースト
@@ -32,14 +33,8 @@ namespace Tetris
         /// <param name="seed"></param>
         public void Initialize(int seed)
         {
-            if (seed >= 0)
-            {
-                rnd = (uint)seed;
-            }
-            else
-            {
-                rnd = (uint)DateTime.Now.Ticks;
-            }
+            _next = new NextManager(seed);
+            _next.Reload();
 
             _field_fixed.Clear(true);
         }
@@ -337,11 +332,15 @@ namespace Tetris
             // ブロック生成
             if(_tetrimino.Type == Tetrimino.TetriminoType.None)
             {
-                uint t = Rand.NextRandInt(ref rnd) % Tetrimino.TETRIMINO_TYPE_NUM;
-                //t = 0;
+                _tetrimino = _next.Pull();
 
-                _tetrimino = new Tetrimino((Tetrimino.TetriminoType)t);
+                // Nextが少なくなったら継ぎ足す
+                if(_next.GetRemain() <= Tetrimino.TypeNum)
+                {
+                    _next.Reload();
+                }
 
+                // 出現位置の補正
                 int pos_y;
                 if( _tetrimino.Type == Tetrimino.TetriminoType.I )
                 {
@@ -351,7 +350,6 @@ namespace Tetris
                 {
                     pos_y = 1;
                 }
-
                 _tetrimino.SetPosition((Field.Width / 2) - (_tetrimino.Size / 2), pos_y);
             }
 
@@ -415,6 +413,8 @@ namespace Tetris
                         if (_field_fixed.IsFilled(x, 0))
                     {
                         // TODO: とりあえず全クリア
+                        _next.Clear();
+                        _next.Reload();
                         _field_fixed.Clear(true);
                     }
                 }
@@ -476,7 +476,7 @@ namespace Tetris
 
         /// <summary>
         /// Draw
-        /// </summary>
+        /// /// </summary>
         /// <param name="gameTime"></param>
         /// <param name="spriteBatch"></param>
         public void Draw(GameTime gameTime, SpriteBatch spriteBatch)
